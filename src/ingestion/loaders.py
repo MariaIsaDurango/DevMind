@@ -4,7 +4,9 @@ from pathlib import Path
 
 from langchain_core.documents import Document
 from pypdf import PdfReader
+from pypdf.errors import PdfReadError
 
+from .errors import IngestionError
 from .metadata import build_metadata
 
 SUPPORTED_EXTENSIONS = {".pdf", ".md", ".txt"}
@@ -32,25 +34,37 @@ def _read_text_file(path: Path) -> str:
 
 
 def _load_pdf(path: Path) -> list[Document]:
-    reader = PdfReader(str(path))
-    docs = []
-    for number, page in enumerate(reader.pages, start=1):
-        text = _clean_pdf_text(page.extract_text() or "")
-        if text:
-            docs.append(
-                Document(page_content=text, metadata=build_metadata(path.name, page=number))
-            )
+    try:
+        reader = PdfReader(str(path))
+        docs = []
+        for number, page in enumerate(reader.pages, start=1):
+            text = _clean_pdf_text(page.extract_text() or "")
+            if text:
+                docs.append(
+                    Document(page_content=text, metadata=build_metadata(path.name, page=number))
+                )
+    except PdfReadError as e:
+        # Cubre PdfStreamError y otros errores de formato: PDF corrupto o inválido.
+        raise IngestionError(f"El PDF '{path.name}' está dañado o no es un PDF válido: {e}") from e
     return docs
 
 
 def load_file(path: str | Path) -> list[Document]:
-    """Carga un archivo y devuelve una lista de Document (uno por página en PDF)."""
+    """Carga un archivo y devuelve una lista de Document (uno por página en PDF).
+
+    Lanza IngestionError para cualquier problema esperable (extensión no
+    soportada, archivo inexistente, PDF corrupto) para que el backend pueda
+    devolver un 400 con un mensaje claro en lugar de un 500 genérico.
+
+    Devuelve una lista vacía cuando el archivo existe y es válido pero no
+    tiene texto extraíble (archivo vacío, o PDF escaneado sin OCR).
+    """
     path = Path(path)
     if not path.exists():
-        raise FileNotFoundError(f"No existe el archivo: {path}")
+        raise IngestionError(f"No existe el archivo: {path}")
     ext = path.suffix.lower()
     if ext not in SUPPORTED_EXTENSIONS:
-        raise ValueError(
+        raise IngestionError(
             f"Extensión no soportada: '{ext}'. Permitidas: {sorted(SUPPORTED_EXTENSIONS)}"
         )
     if ext == ".pdf":

@@ -19,8 +19,12 @@ try:
 except ImportError:
     pass
 
+import logging  # noqa: E402
+
 from src.ingestion import process_directory  # noqa: E402
 from src.ingestion.chunking import get_chunk_config  # noqa: E402
+
+logging.basicConfig(level=logging.WARNING, format="[%(levelname)s] %(message)s")
 
 
 def main() -> None:

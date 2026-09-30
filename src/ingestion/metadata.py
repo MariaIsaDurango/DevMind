@@ -23,6 +23,18 @@ _REPO_RE = re.compile(r"^\s*(?:repositorio|repository)\s*:\s*(.+?)\s*$", re.I | 
 _TECH_RE = re.compile(r"^\s*(?:tecnolog[ií]a|tech[_ ]stack)\s*:\s*(.+?)\s*$", re.I | re.M)
 
 
+def _compile_keyword_patterns() -> dict[str, list[re.Pattern]]:
+    """Compila cada palabra clave con límites de palabra (\\b) para evitar falsos
+    positivos como 'helmets' -> Kubernetes o 'laws' -> AWS."""
+    patterns = {}
+    for tech, keywords in TECH_KEYWORDS.items():
+        patterns[tech] = [re.compile(r"\b" + re.escape(k) + r"\b", re.I) for k in keywords]
+    return patterns
+
+
+_TECH_PATTERNS = _compile_keyword_patterns()
+
+
 def extract_doc_info(text: str, filename: str = "") -> tuple[str, str]:
     """Devuelve (repository, tech_stack) leyendo la cabecera del documento.
 
@@ -36,9 +48,10 @@ def extract_doc_info(text: str, filename: str = "") -> tuple[str, str]:
     if tech_match:
         tech_stack = tech_match.group(1)
     else:
-        lowered = f"{filename} {text}".lower()
+        combined = f"{filename} {text}"
         scores = {
-            tech: sum(lowered.count(k) for k in kws) for tech, kws in TECH_KEYWORDS.items()
+            tech: sum(len(p.findall(combined)) for p in patterns)
+            for tech, patterns in _TECH_PATTERNS.items()
         }
         best = max(scores, key=scores.get)
         tech_stack = best if scores[best] > 0 else UNKNOWN
