@@ -1,5 +1,5 @@
 ## Rama destino
-<!-- feature/* → develop.  develop → main solo en la entrega -->
+main
 
 ## ¿Qué cambia?
 <!-- Resumen breve del PR -->
