@@ -49,7 +49,15 @@ def _existing_ids_by_source(source: str) -> set[str]:
 
 
 def index_documents(docs: list[Document]) -> int:
-    """Inserta o actualiza chunks y elimina los obsoletos del mismo archivo."""
+    """Inserta o actualiza chunks y elimina los obsoletos del mismo archivo.
+
+    IMPORTANTE: hay que pasar TODOS los chunks de cada archivo (la salida
+    completa de process_file). Los chunks que ya estén en Chroma con el mismo
+    `source` y no vengan en `docs` se consideran obsoletos y se borran.
+    Si se pasa solo una parte de un archivo, se pierde el resto.
+
+    Devuelve el número de chunks indexados.
+    """
     if not docs:
         return 0
 
@@ -61,7 +69,7 @@ def index_documents(docs: list[Document]) -> int:
 
     vectorstore = get_vectorstore()
     collection = get_collection()
-    existing_ids = set(collection.get().get("ids", []))
+    existing_ids = set(collection.get(ids=ids, include=[])["ids"])
 
     docs_by_source: dict[str, list[tuple[str, Document]]] = {}
     for chunk_id, doc in zip(ids, docs):
