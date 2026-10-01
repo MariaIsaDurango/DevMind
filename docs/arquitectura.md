@@ -110,4 +110,9 @@ Devuelve `{ "status": "ok" }`. Lo usa el frontend para comprobar que el backend 
 - **P4** conecta el componente de subida de archivos de Gradio a `POST /upload`.
 
 ## Decisiones técnicas
-_Completar conforme el equipo decida: modelo de embeddings multilingüe concreto, LLM, umbral de similitud, valor de k._
+- **Embeddings:** `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`, configurado mediante `EMBEDDING_MODEL` y con vectores normalizados.
+- **Vector store:** ChromaDB persistente en `data/processed/chroma`, colección `devmind_docs` por defecto.
+- **Indexación:** `metadata["chunk_id"]` es el ID estable. Reindexar actualiza los chunks existentes y elimina los obsoletos de la misma fuente.
+- **Retriever:** similitud con `TOP_K=4` por defecto y `SIMILARITY_THRESHOLD=0.30`. La distancia L2 de Chroma se convierte a un score en `[0, 1]` mediante `1 - distance / 2`.
+- **Calibración:** el umbral se validó con el corpus de ejemplo: la consulta sobre staging recupera la sección correspondiente y una pregunta fuera del dominio no devuelve contexto.
+- **Configuración local:** los valores se pueden sobrescribir en `.env`; `.venv` y `data/processed/chroma` no se versionan.
