@@ -174,15 +174,33 @@ def test_chunk_lleva_prefijo_de_seccion():
 
 
 def test_chunk_id_es_determinista_y_unico():
-    id1 = make_chunk_id("x.md", 0, "mismo texto")
-    id2 = make_chunk_id("x.md", 0, "mismo texto")
-    id3 = make_chunk_id("x.md", 1, "mismo texto")
+    id1 = make_chunk_id("x.md", 1, 0, "mismo texto")
+    id2 = make_chunk_id("x.md", 1, 0, "mismo texto")
+    id3 = make_chunk_id("x.md", 1, 1, "mismo texto")
+    id4 = make_chunk_id("x.md", 2, 0, "mismo texto")
     assert id1 == id2          # mismo input -> mismo id (permite sobrescribir al reindexar)
     assert id1 != id3          # distinto índice -> distinto id
+    assert id1 != id4          # distinta página -> distinto id
 
     chunks = process_file(RAW / "api_usuarios.md")
     ids = [c.metadata["chunk_id"] for c in chunks]
     assert len(ids) == len(set(ids)), "Todos los chunk_id de un archivo deben ser únicos"
+
+
+def test_chunk_id_unico_en_pdf_con_paginas_identicas():
+    # El índice se reinicia en cada página: sin la página en el id, dos páginas
+    # con el mismo texto (portadas, plantillas) chocaban y P2 rechazaba el lote
+    docs = [
+        Document(
+            page_content="Página de plantilla repetida en cada hoja.",
+            metadata=build_metadata("m.pdf", page=p),
+        )
+        for p in (1, 2)
+    ]
+    ids = [c.metadata["chunk_id"] for c in split_documents(docs)]
+    assert len(ids) == 2
+    assert len(ids) == len(set(ids)), f"chunk_id duplicados: {ids}"
+    assert ids[0].startswith("m.pdf::p1::") and ids[1].startswith("m.pdf::p2::")
 
 
 def test_reindexar_mismo_archivo_da_los_mismos_chunk_ids():

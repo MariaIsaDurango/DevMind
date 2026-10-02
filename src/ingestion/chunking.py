@@ -37,15 +37,19 @@ def get_chunk_config() -> tuple[int, int]:
     return size, overlap
 
 
-def make_chunk_id(source: str, index: int, text: str) -> str:
+def make_chunk_id(source: str, page: int, index: int, text: str) -> str:
     """ID determinista para cada chunk: mismo archivo + mismo contenido = mismo id.
 
     P2 debe usarlo como id al indexar en Chroma, así reindexar el mismo
     archivo (por ejemplo, reenviarlo por /upload) sobrescribe en vez de
     duplicar.
+
+    La página forma parte del id porque el índice se reinicia en cada página:
+    sin ella, dos páginas de un PDF con el mismo texto (portadas, plantillas,
+    pies repetidos) generarían el mismo id.
     """
-    digest = hashlib.sha256(f"{source}|{index}|{text}".encode("utf-8")).hexdigest()[:16]
-    return f"{source}::{index}::{digest}"
+    digest = hashlib.sha256(f"{source}|{page}|{index}|{text}".encode("utf-8")).hexdigest()[:16]
+    return f"{source}::p{page}::{index}::{digest}"
 
 
 def _deepest_header(meta: dict) -> str:
@@ -140,6 +144,6 @@ def split_documents(
         for index, (section, text) in enumerate(pieces):
             prefixed = text if text.startswith(f"[{section}]") else f"[{section}] {text}"
             metadata = build_metadata(source, section, repo, tech, page)
-            metadata["chunk_id"] = make_chunk_id(source, index, text)
+            metadata["chunk_id"] = make_chunk_id(source, page, index, text)
             chunks.append(Document(page_content=prefixed, metadata=metadata))
     return chunks
