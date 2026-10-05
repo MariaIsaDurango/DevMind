@@ -11,9 +11,11 @@ load_dotenv()
 from src.ingestion import process_file
 from src.vectorstore.store import index_documents
 from src.vectorstore.retriever import get_retriever
+from src.backend.prompts import SYSTEM_PROMPT
 
 # --- CONFIGURACIÓN CENTRALIZADA PARA GROQ ---
 GROQ_API_KEY = os.getenv("GROQ_API_KEY") or os.getenv("LLM_API_KEY")
+
 # Modelo exacto verificado disponible en tu cuenta de Groq
 GROQ_MODEL = os.getenv("LLM_MODEL", "openai/gpt-oss-20b")
 
