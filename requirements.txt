@@ -13,7 +13,10 @@ langchain-huggingface>=0.1
 # ===== Ingesta =====
 pypdf>=4.0
 
-# ===== LLM (descomentar SOLO el proveedor elegido por el equipo) =====
+# ===== LLM (Proveedores) =====
+groq>=0.9.0
+langchain-groq>=0.2.0
+# llama-index-llms-groq>=0.2.0
 # langchain-anthropic>=0.3
 # langchain-openai>=0.2
 # langchain-ollama>=0.2      # modelo local
