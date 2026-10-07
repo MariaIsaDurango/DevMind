@@ -29,7 +29,7 @@ client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 RAW_DATA_DIR = os.path.join("data", "raw")
 
 
-def initialize_index(data_dirs: list = ["data/raw", "docs"]):
+def initialize_index(data_dirs: list = ["data/raw"]):
     """
     Procesa los documentos de múltiples carpetas (data/raw y docs) usando el módulo de ingesta,
     ignorando archivos ocultos como .gitkeep e indexando los chunks en ChromaDB.
