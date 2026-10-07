@@ -6,7 +6,7 @@ from src.backend.rag_chain import initialize_index, query_rag, handle_file_uploa
 
 # Inicializamos el índice de LlamaIndex al arrancar la app
 print("🔄 Inicializando el motor RAG de LlamaIndex...")
-rag_index = initialize_index(data_dirs=["data/raw", "docs"])
+rag_index = initialize_index(data_dirs=["data/raw",])
 
 
 def responder_chat(mensaje, historial):
@@ -50,7 +50,10 @@ def responder_chat(mensaje, historial):
             fuentes_md += f"  - *Fragmento:* \n> *\"{texto_frag[:150]}...\"*\n\n"
     else:
         fuentes_md = "### 📚 Fuentes y Trazabilidad:\n⚠ No se encontraron documentos relevantes (umbral de similitud no superado)."
-
+    historial.append({"role": "user", "content": mensaje})
+    historial.append({"role": "assistant", "content": respuesta_real})
+    return "", historial, fuentes_md
+ 
 
 # Construcción de la interfaz gráfica con Gradio Blocks
 with gr.Blocks(title="DevMind - Asistente RAG DevOps") as demo:
