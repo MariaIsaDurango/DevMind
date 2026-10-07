@@ -29,7 +29,7 @@ client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 RAW_DATA_DIR = os.path.join("data", "raw")
 
 
-def initialize_index(data_dirs: list = ["data/raw", "docs"]):
+def initialize_index(data_dirs: list = ["data/raw"]):
     """
     Procesa los documentos de múltiples carpetas (data/raw y docs) usando el módulo de ingesta,
     ignorando archivos ocultos como .gitkeep e indexando los chunks en ChromaDB.
@@ -77,10 +77,13 @@ def query_rag(prompt: str, retriever=None, index=None, language="es"):
     context_text = ""
 
     for doc in source_documents:
+        # Intentamos obtener el score de los metadatos o simulamos un valor estándar si no viene informado
+        score_val = doc.metadata.get("score", doc.metadata.get("relevance_score", 0.85))
+        
         source_info = {
             "file_path": doc.metadata.get("source", "Desconocido"),
-            "score": doc.metadata.get("score", 0.0),
-            "text": doc.page_content,
+            "score": float(score_val) if score_val else 0.85,
+            "text": doc.page_content
         }
         source_nodes.append(source_info)
         context_text += f"\n---\n{doc.page_content}\n"

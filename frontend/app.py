@@ -26,22 +26,30 @@ def responder_chat(mensaje, historial):
     if source_nodes:
         fuentes_md = "### 📚 Fuentes y Trazabilidad:\n"
         for i, fuente in enumerate(source_nodes, 1):
+            # Intentamos extraer el score de varias formas posibles para que nunca falle
+            score_val = 0.0
             try:
-                score_val = float(fuente.get('score', 0.0) or 0.0)
+                # 1. Si es un diccionario con 'score'
+                if isinstance(fuente, dict):
+                    score_val = float(fuente.get('score', 0.0) or 0.0)
+                # 2. Si el objeto fuente tiene un atributo score (nodo de LlamaIndex)
+                elif hasattr(fuente, 'score') and fuente.score is not None:
+                    score_val = float(fuente.score)
+                # 3. Diccionario dentro de metadatos o similar
+                elif hasattr(fuente, 'get'):
+                    score_val = float(fuente.get('score', 0.0) or 0.0)
             except (ValueError, TypeError):
                 score_val = 0.0
                 
-            fuentes_md += f"- **Fuente {i}** (Relevancia: {score_val:.2f}):\n"
-            fuentes_md += f"  - *Archivo:* `{fuente.get('file_path', 'Desconocido')}`\n"
-            fuentes_md += f"  - *Fragmento:* \n> *\"{fuente.get('text', '')}\"*\n\n"
-    else:
-        fuentes_md = "### 📚 Fuentes y Trazabilidad:\n⚠️️ No se encontraron documentos relevantes (umbral de similitud no superado)."
+            # Si score_val sigue siendo 0.0 pero el objeto trae metadata, comprobamos
+            archivo = fuente.get('file_path', 'Desconocido') if isinstance(fuente, dict) else getattr(fuente, 'file_path', 'Desconocido')
+            texto_frag = fuente.get('text', '') if isinstance(fuente, dict) else getattr(fuente, 'text', '')
 
-    # Añadimos los mensajes en formato de diccionarios que exige Gradio moderno
-    historial.append({"role": "user", "content": mensaje})
-    historial.append({"role": "assistant", "content": respuesta_real})
-    
-    return "", historial, fuentes_md
+            fuentes_md += f"- **Fuente {i}** (Relevancia: {score_val:.2f}):\n"
+            fuentes_md += f"  - *Archivo:* `{archivo}`\n"
+            fuentes_md += f"  - *Fragmento:* \n> *\"{texto_frag[:150]}...\"*\n\n"
+    else:
+        fuentes_md = "### 📚 Fuentes y Trazabilidad:\n⚠ No se encontraron documentos relevantes (umbral de similitud no superado)."
 
 
 # Construcción de la interfaz gráfica con Gradio Blocks
