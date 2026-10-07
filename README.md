@@ -8,7 +8,6 @@
   <img src="https://img.shields.io/badge/LangChain-1C3C3C?logo=chainlink&logoColor=white" alt="LangChain">
   <img src="https://img.shields.io/badge/ChromaDB-FF6F00?logo=database&logoColor=white" alt="ChromaDB">
   <img src="https://img.shields.io/badge/Sentence%20Transformers-FFCC00?logo=huggingface&logoColor=black" alt="Sentence Transformers">
-  <img src="https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white" alt="FastAPI">
   <img src="https://img.shields.io/badge/Gradio-FF7C00?logo=gradio&logoColor=white" alt="Gradio">
   <img src="https://img.shields.io/badge/Groq-F55036?logo=groq&logoColor=white" alt="Groq">
 </p>
@@ -29,25 +28,20 @@ Permite procesar documentación, generar *embeddings*, almacenarlos en una base 
 
 Ante una pregunta, DevMind recupera los fragmentos más relevantes de la documentación y los utiliza como contexto para generar una respuesta fundamentada, mostrando además las fuentes utilizadas.
 
-### 🔄 Flujo general
+---
 
-```
-Documentos
-    ↓
-Ingesta + Chunking
-    ↓
-Embeddings
-    ↓
-ChromaDB
-    ↓
-Búsqueda semántica
-    ↓
-Contexto relevante
-    ↓
-LLM
-    ↓
-Respuesta + Fuentes
-```
+## 🏗️ Arquitectura
+
+DevMind está compuesto por varios componentes que trabajan conjuntamente para implementar el flujo **RAG (Retrieval-Augmented Generation)** de consulta y generación de respuestas.
+
+- **Ingesta:** procesa los documentos, extrae su contenido y genera los *chunks*.
+- **Embeddings:** transforma los *chunks* en representaciones vectoriales para permitir la búsqueda semántica.
+- **ChromaDB:** almacena los *embeddings* junto con los metadatos necesarios para mantener la trazabilidad.
+- **Retriever:** recupera los fragmentos más relevantes en función de la consulta del usuario.
+- **RAG Chain:** construye el contexto a partir de los fragmentos recuperados y prepara la consulta para el LLM.
+- **Groq:** proporciona el modelo de lenguaje encargado de generar la respuesta utilizando el contexto recuperado.
+- **FastAPI:** proporciona la API backend y expone la lógica necesaria para interactuar con el sistema RAG.
+- **Gradio:** proporciona la interfaz web para realizar consultas, visualizar respuestas, consultar fuentes y subir documentos.
 
 ---
 
@@ -68,25 +62,11 @@ Resolver la dificultad de encontrar información relevante dentro de grandes can
 
 ## 🤖 ¿Qué es RAG?
 
-**Retrieval-Augmented Generation (RAG)** combina la **recuperación de información** y la **generación de texto** mediante modelos de lenguaje.
+**Retrieval-Augmented Generation (RAG)** combina la recuperación de información con la generación de texto mediante modelos de lenguaje.
 
-En lugar de enviar directamente una pregunta al LLM, **DevMind** primero busca información relevante en nuestra documentación:
+En DevMind, la pregunta del usuario se utiliza para recuperar información relevante de la documentación almacenada. Estos fragmentos se incorporan como contexto para que el LLM genere una respuesta fundamentada en la información recuperada.
 
-```
-Pregunta
-   ↓
-Retriever
-   ↓
-Fragmentos relevantes
-   ↓
-Contexto + Pregunta
-   ↓
-LLM
-   ↓
-Respuesta + Fuentes
-```
-
-Esto permite trabajar con información específica de nuestra propia documentación y generar respuestas fundamentadas en el contexto recuperado.
+Esto permite trabajar con información específica de nuestra documentación sin depender únicamente del conocimiento previo del modelo.
 
 ---
 
@@ -94,59 +74,50 @@ Esto permite trabajar con información específica de nuestra propia documentaci
 
 ### 1. 📥 Ingesta
 
-DevMind procesa documentos en formatos como:
-
-- `.pdf`
-- `.md`
-- `.txt`
-
-Durante la ingesta se extrae el contenido, se divide en *chunks* y se generan los *embeddings* correspondientes.
+DevMind procesa documentos `.pdf`, `.md` y `.txt`, extrae su contenido y lo divide en *chunks*.
 
 ### 2. 🧠 Embeddings
 
-Cada fragmento se transforma en una representación vectorial que permite realizar búsquedas por **similitud semántica**.
+Cada *chunk* se transforma en una representación vectorial para permitir búsquedas por similitud semántica.
 
 ### 3. 🗄️ Vector Store
 
-Los *embeddings* se almacenan en **ChromaDB**, junto con sus metadatos para mantener la trazabilidad.
-
-```
-{ "source": "guia_despliegue.md", "section": "Entornos de Staging", "page": 1 }
-```
+Los embeddings y sus metadatos se almacenan en **ChromaDB**, permitiendo conservar la trazabilidad de cada fragmento.
 
 ### 4. 🔎 Retrieval
 
-La pregunta del usuario se convierte en un *embedding* y se utiliza para recuperar los fragmentos más relevantes de la documentación.
+La consulta del usuario se transforma en un embedding y se utiliza para recuperar los fragmentos más relevantes.
 
 ### 5. 🤖 Generación
 
-El **LLM** recibe la pregunta junto con el contexto recuperado y genera la respuesta basándose en la información proporcionada.
+El **RAG Chain** combina la pregunta con el contexto recuperado y lo envía al LLM proporcionado por **Groq**.
 
 ### 6. 🔗 Trazabilidad
 
-Las respuestas incluyen información sobre las **fuentes y fragmentos utilizados**, permitiendo revisar el origen de la información y comprobar en qué documentación se basa cada respuesta.
+La interfaz muestra las fuentes, fragmentos y relevancia utilizados para generar cada respuesta.
 
 ---
 
 ## 🛡️ Grounding y prevención de alucinaciones
 
-DevMind está diseñado para responder utilizando **únicamente la información recuperada de la documentación**.
+DevMind incorpora un **prompt de grounding** que instruye al LLM a responder basándose únicamente en la información recuperada de la documentación.
 
-Cuando el contexto disponible no contiene información suficiente, el sistema debe indicarlo en lugar de generar una respuesta no respaldada.
+Cuando el contexto recuperado no contiene información suficiente, el sistema está diseñado para indicarlo en lugar de inventar información.
 
-> 💡 Es preferible reconocer que no existe información suficiente antes que proporcionar una respuesta que no pueda ser respaldada por las fuentes.
+> 💡 El grounding reduce el riesgo de respuestas no respaldadas, pero las respuestas generadas deben contrastarse con las fuentes originales cuando la precisión sea importante.
 
 ---
 
 ## 🖥️ Interfaz
 
-DevMind proporciona una **interfaz web** desde la que el usuario puede:
+DevMind proporciona una interfaz web basada en Gradio que permite:
 
-- Realizar consultas mediante chat.
-- Interactuar con la documentación.
-- Consultar las respuestas generadas.
-- Revisar las fuentes recuperadas.
-- Consultar los metadatos asociados.
+- Realizar consultas al asistente.
+- Visualizar las respuestas generadas.
+- Consultar las fuentes y fragmentos recuperados.
+- Revisar los metadatos asociados a los documentos.
+- Subir documentos PDF, Markdown y TXT.
+- Procesar e indexar automáticamente los documentos subidos.
 
 ---
 
@@ -155,12 +126,13 @@ DevMind proporciona una **interfaz web** desde la que el usuario puede:
 | Tecnología | Uso en DevMind |
 |---|---|
 | **Python** | Lenguaje principal |
-| **LangChain** | Orquestación del pipeline RAG |
+| **LangChain** | Integración y componentes del pipeline RAG |
 | **ChromaDB** | Almacenamiento y búsqueda vectorial |
 | **Sentence Transformers** | Generación de embeddings |
 | **Hugging Face** | Modelos de embeddings |
-| **Groq** | Proveedor del modelo de lenguaje |
 | **FastAPI** | Backend y API |
+| **Uvicorn** | Servidor ASGI |
+| **Groq** | Proveedor del modelo de lenguaje |
 | **Gradio** | Interfaz web |
 | **PyPDF** | Procesamiento de documentos PDF |
 | **Pydantic** | Validación de datos |
@@ -174,11 +146,11 @@ DevMind proporciona una **interfaz web** desde la que el usuario puede:
 ```
 DevMind/ 
 ├── .github/                              # Configuración y automatizaciones de GitHub 
-├── data/                                 # Datos y documentos utilizados por el sistema 
-│ 
-├── raw/                                  # Documentos originales 
+|
+├── data/                                 # Datos y documentos utilizados por el sistema  
+|    ├── raw/                             # Documentos originales 
 │    └── processed/                       # Documentos procesados y datos generados 
-│         └── chroma/                     # Base de datos vectorial de ChromaDB 
+│         └── chroma/                     # Persistencia de ChromaDB generada por la aplicación
 |
 ├── docs/                                 # Documentación técnica del proyecto 
 |
@@ -210,8 +182,7 @@ Desde **PowerShell**, en la raíz del repositorio:
 ### 1. Crear el entorno virtual
 
 ```
-python -m venv .venv 
-.\.venv\Scripts\Activate.ps1
+python -m venv .venv ..venv\Scripts\Activate.ps1
 ```
 
 ### 2. Instalar dependencias
@@ -260,6 +231,28 @@ python scripts\ingest.py
 python -m pytest -q
 ```
 
+### 6. Ejecutar la aplicación
+
+DevMind utiliza **FastAPI** como backend y **Gradio** como interfaz web.
+
+#### Iniciar el backend con FastAPI
+
+Desde la raíz del proyecto:
+
+```
+$env:PYTHONPATH="." uvicorn src.backend.api:app --reload
+```
+
+El backend estará disponible en la dirección indicada por Uvicorn.
+
+#### Iniciar la interfaz de Gradio
+
+En otra terminal, con el entorno virtual activado:
+
+```
+$env:PYTHONPATH="." python frontend/app.py
+```
+
 ---
 
 ## ⚙️ Configuración
@@ -278,69 +271,39 @@ Estos parámetros afectan directamente al **proceso de recuperación** y al func
 
 ## 💬 Ejemplo de uso
 
-Una consulta típica podría ser:
+### Pregunta
 
-> **¿Cómo se despliega el servicio en staging?**
+> ¿Cuántos días de vacaciones corresponden?
 
-### 🔄 Flujo de procesamiento
+### DevMind
 
-```
-Pregunta 
-   ↓ 
-Embedding de la consulta
-   ↓
-Búsqueda semántica
-   ↓
-Fragmentos relevantes
-   ↓ 
-Contexto
-   ↓
-LLM
-   ↓
-Respuesta + Fuentes
-```
+La respuesta se genera utilizando la información recuperada de la documentación disponible.
 
-### ✅ Resultado esperado
+### 📚 Fuentes y trazabilidad
 
-> Para desplegar el servicio en staging debe ejecutarse el pipeline correspondiente al entorno de staging.
+Para cada respuesta, DevMind muestra las fuentes recuperadas por el sistema, incluyendo:
 
-### 📚 Fuente
+- **Archivo de origen**
+- **Relevancia del fragmento**
+- **Fragmento utilizado como contexto**
 
-- **Documento:** `guia_despliegue.md`
-- **Sección:** `Entornos de Staging`
+En este ejemplo, la interfaz muestra **3 fuentes recuperadas**, procedentes de `Prueba.txt` y `api_usuarios.md`, junto con su nivel de relevancia y el contenido utilizado para generar la respuesta.
 
 ---
 
 ## 🧪 Validación
 
-DevMind incorpora pruebas automatizadas y funcionales para validar el comportamiento del sistema RAG en los siguientes aspectos:
+DevMind incorpora pruebas automatizadas para validar diferentes componentes del sistema:
 
-- **Retrieval:** relevancia de los fragmentos recuperados.
-- **Grounding:** respaldo de las respuestas en el contexto recuperado.
-- **Preguntas sin respuesta:** capacidad de reconocer cuándo no existe información suficiente.
-- **Trazabilidad:** correspondencia entre las respuestas generadas y las fuentes utilizadas.
+- **Ingesta:** procesamiento y generación de chunks.
+- **Embeddings:** configuración y reutilización del modelo.
+- **Retrieval:** recuperación de fragmentos relevantes.
+- **Persistencia:** almacenamiento y reapertura de ChromaDB.
+- **Metadatos:** conservación de información de trazabilidad.
+- **Reindexación:** actualización de chunks y eliminación de contenido obsoleto.
+- **IDs de chunks:** generación de identificadores deterministas y únicos, incluidos PDFs con páginas repetidas.
 
----
-
-### ⚙️ Comandos de validación
-
-Comprobar el proceso de ingesta mediante un *dry-run*:
-
-```
-python scripts\ingest.py --dry-run
-```
-
-Ejecutar la ingesta y generar los índices:
-
-```
-python scripts\ingest.py
-```
-
-Ejecutar las pruebas automatizadas:
-
-```
-python -m pytest -q
-```
+La validación del flujo completo con el LLM puede realizarse mediante la interfaz de Gradio.
 
 ---
 
@@ -348,14 +311,18 @@ python -m pytest -q
 
 Actualmente están implementados:
 
-- **Ingesta de documentación** en PDF, Markdown y TXT.
-- **Generación de embeddings** mediante el modelo configurado.
-- **Indexación persistente en ChromaDB.**
-- **Búsqueda semántica y recuperación de contexto**.
-- **Configuración mediante variables de entorno**.
-- **Tests automatizados**.
+- Ingesta de documentos PDF, Markdown y TXT.
+- Generación de embeddings multilingües.
+- Indexación persistente en ChromaDB.
+- Recuperación semántica mediante retriever configurable.
+- Generación de respuestas mediante Groq.
+- Prompt de grounding para reducir respuestas no respaldadas.
+- Trazabilidad de las fuentes recuperadas.
+- Subida y persistencia de documentos mediante la interfaz Gradio.
+- Reindexación idempotente y eliminación de chunks obsoletos.
+- Tests automatizados de ingesta, embeddings, persistencia y retrieval.
 
-La integración del **retriever con la cadena RAG del backend** se encuentra en:
+El flujo principal se orquesta desde:
 
 ```
 src/backend/rag_chain.py
@@ -435,7 +402,5 @@ Entre las posibles líneas de evolución de **DevMind** se encuentran:
 **DevMind** ha sido desarrollado con fines **educativos** y como herramienta de apoyo para la consulta de documentación técnica.
 
 No está destinado a tomar **decisiones críticas de forma autónoma**.
-
-> ⚠️ Las respuestas generadas deben revisarse y contrastarse con las **fuentes originales** cuando sea necesario.
 
 ---
