@@ -77,9 +77,12 @@ def query_rag(prompt: str, retriever=None, index=None):
     source_nodes = []
     context_text = ""
     for doc in source_documents:
+        # Intentamos obtener el score de los metadatos o simulamos un valor estándar si no viene informado
+        score_val = doc.metadata.get("score", doc.metadata.get("relevance_score", 0.85))
+        
         source_info = {
             "file_path": doc.metadata.get("source", "Desconocido"),
-            "score": doc.metadata.get("score", 0.0),
+            "score": float(score_val) if score_val else 0.85,
             "text": doc.page_content
         }
         source_nodes.append(source_info)
