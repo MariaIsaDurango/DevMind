@@ -11,7 +11,7 @@ load_dotenv()
 from src.ingestion import process_file
 from src.vectorstore.store import index_documents
 from src.vectorstore.retriever import get_retriever
-from src.backend.prompts import SYSTEM_PROMPT
+from src.backend.prompts import SYSTEM_PROMPT_ES, SYSTEM_PROMPT_EN
 
 # --- CONFIGURACIÓN CENTRALIZADA PARA GROQ ---
 GROQ_API_KEY = os.getenv("GROQ_API_KEY") or os.getenv("LLM_API_KEY")
@@ -43,7 +43,7 @@ def initialize_index(data_dirs: list = ["data/raw"]):
 
         for filename in os.listdir(directory):
             # Ignoramos archivos ocultos como .gitkeep
-            if filename.startswith("."):
+            if filename.startswith(".") or filename == "pruebas_grounding.md":
                 continue
 
             file_path = os.path.join(directory, filename)
@@ -60,22 +60,22 @@ def initialize_index(data_dirs: list = ["data/raw"]):
     else:
         print("⚠️ No se encontraron documentos válidos para indexar.")
     
-    return get_retriever(k=3)
+    return get_retriever(k=4)
 
 
-def query_rag(prompt: str, retriever=None, index=None):
+def query_rag(prompt: str, retriever=None, index=None, language="es"):
     """
-    Ejecuta una consulta usando el retriever del equipo y genera la respuesta real consultando a la API de Groq.
+    Ejecuta una consulta usando el retriever del equipo y genera
+    la respuesta consultando a la API de Groq.
     """
     if retriever is None:
-        retriever = get_retriever(k=3)
+        retriever = get_retriever(k=4)
 
-    # Recuperamos los documentos más relevantes con LangChain
     source_documents = retriever.invoke(prompt)
-    
-    # Extraemos las fuentes para el panel de trazabilidad de Gradio y construimos el contexto
+
     source_nodes = []
     context_text = ""
+
     for doc in source_documents:
         # Intentamos obtener el score de los metadatos o simulamos un valor estándar si no viene informado
         score_val = doc.metadata.get("score", doc.metadata.get("relevance_score", 0.85))
@@ -91,24 +91,25 @@ def query_rag(prompt: str, retriever=None, index=None):
     if not client:
         return "⚠️ Error: Cliente de Groq no inicializado (falta la clave API).", source_nodes
 
-    system_prompt = (
-        "Eres un asistente técnico experto en desarrollo y DevOps. "
-        "Utiliza exclusivamente el siguiente contexto recuperado de la documentación interna "
-        "para responder de forma clara, precisa y profesional a la pregunta del usuario. "
-        "Si la respuesta no se encuentra en el contexto, indícalo educadamente.\n\n"
-        f"Contexto:\n{context_text}"
+    if language == "en":
+        prompt_template = SYSTEM_PROMPT_EN
+    else:
+        prompt_template = SYSTEM_PROMPT_ES
+
+    system_prompt = prompt_template.format(
+        context_str=context_text,
+        query_str=prompt,
     )
 
     try:
-        # Llamada a la API de Groq con el ID verificado
         chat_completion = client.chat.completions.create(
             model=GROQ_MODEL,
             messages=[
                 {"role": "system", "content": system_prompt},
-                {"role": "user", "content": prompt}
+                {"role": "user", "content": prompt},
             ],
             temperature=0.3,
-            max_tokens=1024
+            max_tokens=1024,
         )
         respuesta_real = chat_completion.choices[0].message.content
     except Exception as e:
