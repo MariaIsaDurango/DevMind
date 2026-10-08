@@ -177,6 +177,24 @@ DevMind/
 
 ## 🚀 Puesta en marcha
 
+
+## 🌐 Demo en línea
+
+Puedes probar DevMind directamente desde el navegador:
+
+👉 https://828d4b98d48be88923.gradio.live/
+
+> Este enlace es temporal: la aplicación se ejecuta desde un equipo del grupo y deja de estar disponible cuando se apaga o caduca el enlace (unos días). Si no abre, sigue los pasos de [Puesta en marcha](#-puesta-en-marcha) para ejecutarla en local.
+
+Preguntas sugeridas para probar:
+
+- ¿Cómo se despliega en staging?
+- ¿Quién aprueba el despliegue a producción?
+- ¿Cuántas peticiones por minuto permite la API de usuarios?
+- ¿Quién ganó el mundial de 2018? (debe responder que no tiene información)
+
+
+
 Desde **PowerShell**, en la raíz del repositorio:
 
 ### 1. Crear el entorno virtual
